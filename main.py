@@ -12,7 +12,7 @@ BLUE = (0, 0, 255)
 
 
 def load_image(name):
-    fullname = os.path.join('sprait', name)
+    fullname = os.path.join('data', name)
     if not os.path.isfile(fullname):
         sys.exit()
     image = pygame.image.load(fullname)
