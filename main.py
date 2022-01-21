@@ -15,14 +15,65 @@ frame_changing_map = {'right': [0, 1, 2, -1], 'left': [-2, -1, 0, 1],
                       'up': [1, 2, -1, 0], 'down': [-1, 0, 1, 2]}
 bullet_moving_map = {0: (1, 0), 1: (0.9, 0.1), 2: (0.8, 0.2), 3: (0.7, 0.3), 4: (0.55, 0.45),
                      5: (0.45, 0.55), 6: (0.4, 0.6), 7: (0.3, 0.7), 8: (0.2, 0.8), 9: (0, 1)}
+pygame.init()
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
+pygame.display.set_caption("Шутер")
+clock = pygame.time.Clock()
+
+
+def clear_sprites():
+    global all_sprites, enemy_sprites, player_bullet_sprites, enemy_bullet_sprites
+    all_sprites = pygame.sprite.Group()
+    enemy_sprites = pygame.sprite.Group()
+    player_bullet_sprites = pygame.sprite.Group()
+    enemy_bullet_sprites = pygame.sprite.Group()
+
+
+def game():
+    global all_sprites, enemy_sprites, player_bullet_sprites, enemy_bullet_sprites,\
+        enemy_die_time, current_window
+    clear_sprites()
+    enemy = Enemy(all_sprites, enemy_sprites)
+    player = Player(all_sprites)
+    game_running = True
+    enemy_die_time = 0
+    while game_running:
+        screen.fill(BLUE)
+        clock.tick(FPS)
+        player.pos[0] += player.frame_changing
+        player.pos[0] %= 36
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                sys.exit()
+            if event.type == pygame.KEYDOWN:
+                player.key_press_event(event)
+                if event.key == pygame.K_SPACE:
+                    Bullet(player.pos[0], player.rect.x, player.rect.y, all_sprites, player_bullet_sprites)
+                if event.key == pygame.K_ESCAPE:
+                    if pause():
+                        return
+            if event.type == pygame.KEYUP:
+                player.key_press_event(event)
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if event.button == 1:
+                    Bullet(player.pos[0], player.rect.x, player.rect.y, all_sprites, player_bullet_sprites)
+            if event.type == pygame.MOUSEMOTION:
+                pass
+            if event.type == pygame.MOUSEWHEEL:
+                pass
+        all_sprites.update()
+        all_sprites.draw(screen)
+        pygame.display.flip()
 
 
 def main_menu():
+    global current_window
+    screen.fill(BLUE)
     main_menu_sprites = pygame.sprite.Group()
-    screen = pygame.display.set_mode((WIDTH, HEIGHT))
     screen.blit(load_image('preview-image-1.png'), (0, 0))
-    start = Button('main_menu_start_images', main_menu_sprites, (200, 200))
-    setting = Button('main_menu_settings_images', main_menu_sprites, (200, 300))
+    start_btn = Button('main_menu_start_images', main_menu_sprites, (200, 100))
+    settings_btn = Button('main_menu_settings_images', main_menu_sprites, (200, 200))
+    quit_btn = Button('main_menu_quit_images', main_menu_sprites, (200, 300))
     start_screen_running = True
     while start_screen_running:
         for event in pygame.event.get():
@@ -33,16 +84,49 @@ def main_menu():
             if event.type == pygame.MOUSEBUTTONDOWN:
                 pass
         main_menu_sprites.update()
-        if start.clicked:
+        if start_btn.clicked:
+            current_window = 'game'
             return
-        if setting.clicked:
-            return
+        if settings_btn.clicked:
+            settings()
+        if quit_btn.clicked:
+            sys.exit()
         main_menu_sprites.draw(screen)
         pygame.display.flip()
 
 
 def settings():
     pass
+
+
+def pause():
+    global current_window
+    screen.fill(BLUE)
+    pause_sprites = pygame.sprite.Group()
+    pause_running = True
+    resume_btn = Button('pause_resume_images', pause_sprites, (200, 0))
+    settings_btn = Button('pause_settings_images', pause_sprites, (200, 110))
+    menu_btn = Button('pause_main_menu_images', pause_sprites, (200, 210))
+    quit_btn = Button('pause_quit_images', pause_sprites, (200, 310))
+    while pause_running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                sys.exit()
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    pause_running = False
+        pause_sprites.update()
+        pause_sprites.draw(screen)
+        pygame.display.flip()
+        if resume_btn.clicked:
+            return
+        if settings_btn.clicked:
+            settings()
+        if menu_btn.clicked:
+            current_window = 'main_menu'
+            return True
+        if quit_btn.clicked:
+            sys.exit()
 
 
 def load_image(*name, colorkey=None):
@@ -72,6 +156,23 @@ def create_blood(pos, rect):
 
 
 class Button(pygame.sprite.Sprite):
+    images = {'main_menu_start_images': [load_image('start-1.png'),
+                                         load_image('start-2.png'),
+                                         load_image('start-3.png')],
+              'main_menu_settings_images': [pygame.transform.scale(load_image('settings-1.png'),
+                                                                   (233, 100))],
+              'main_menu_quit_images': [pygame.transform.scale(load_image('quit-1.png', -1),
+                                                               (233, 100))],
+              'pause_resume_images': [pygame.transform.scale(load_image('resume-1.png', -1),
+                                                             (233, 100))],
+              'pause_settings_images': [pygame.transform.scale(load_image('settings-1.png'),
+                                                               (233, 100))],
+              'pause_main_menu_images': [pygame.transform.scale(load_image('menu-1.png', -1),
+                                                                (233, 100))],
+              'pause_quit_images': [pygame.transform.scale(load_image('quit-1.png', -1),
+                                                           (233, 100))],
+              }
+
     def __init__(self, name, group, pos):
         super().__init__(group)
         self.image_list = Button.images[name]
@@ -83,15 +184,18 @@ class Button(pygame.sprite.Sprite):
     def update(self):
         if self.rect.collidepoint(pygame.mouse.get_pos()):
             if any(pygame.mouse.get_pressed()):
-                self.image = self.image_list[2]
                 self.clicked = True
-            else:
+                if len(self.image_list) != 1:
+                    self.image = self.image_list[2]
+            elif len(self.image_list) != 1:
                 self.image = self.image_list[1]
         else:
             self.image = self.image_list[0]
 
 
 class Blood(pygame.sprite.Sprite):
+    images = [pygame.transform.scale(load_image('blood-1.png'), (i, i)) for i in (1, 2, 3)]
+
     def __init__(self, pos, dx, dy, rect):
         super().__init__(all_sprites)
         self.image = random.choice(Blood.images)
@@ -110,6 +214,8 @@ class Blood(pygame.sprite.Sprite):
 
 
 class Bullet(pygame.sprite.Sprite):
+    images = [pygame.transform.rotate(load_image('bullet-1.png'), i) for i in range(360, 0, -10)]
+
     def __init__(self, pos, x, y, *group):
         super().__init__(*group)
         self.image = Bullet.images[pos]
@@ -139,6 +245,10 @@ class Bullet(pygame.sprite.Sprite):
 
 
 class Player(pygame.sprite.Sprite):
+    images = [pygame.transform.rotate(load_image('player-image-1.png'), i) for i in range(360, 0, -10)]
+    die_images = [load_image('player-die-1.png', -1), load_image('player-die-2.png', -1),
+                  load_image('player-die-3.png')]
+
     def __init__(self, *group):
         super().__init__(*group)
         self.image = Player.images[0]
@@ -156,35 +266,31 @@ class Player(pygame.sprite.Sprite):
 
     def key_press_event(self, event=None):
         if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_LEFT or event.key == pygame.K_a:
+            if event.key == pygame.K_a:
                 self.moving_kx = -1
-                self.pos = [self.pos[0], 18]
-                self.frame_changing = frame_changing_map[self.lastPressedKey][2]
-                self.lastPressedKey = 'left'
-            if event.key == pygame.K_RIGHT or event.key == pygame.K_d:
+            if event.key == pygame.K_d:
                 self.moving_kx = 1
-                self.pos = [self.pos[0], 0]
-                self.frame_changing = frame_changing_map[self.lastPressedKey][0]
-                self.lastPressedKey = 'right'
-            if event.key == pygame.K_DOWN or event.key == pygame.K_s:
+            if event.key == pygame.K_s:
                 self.moving_ky = 1
-                self.pos = [self.pos[0], 9]
-                self.frame_changing = frame_changing_map[self.lastPressedKey][1]
-                self.lastPressedKey = 'down'
-            if event.key == pygame.K_UP or event.key == pygame.K_w:
+            if event.key == pygame.K_w:
                 self.moving_ky = -1
-                self.pos = [self.pos[0], 27]
-                self.frame_changing = frame_changing_map[self.lastPressedKey][3]
-                self.lastPressedKey = 'up'
+            if event.key == pygame.K_LEFT:
+                self.frame_changing = -1
+                self.lastPressedKey = 'left'
+            if event.key == pygame.K_RIGHT:
+                self.frame_changing = 1
+                self.lastPressedKey = 'right'
         if event.type == pygame.KEYUP:
-            if event.key == pygame.K_LEFT or event.key == pygame.K_a:
+            if event.key == pygame.K_a:
                 self.moving_kx = 0
-            if event.key == pygame.K_RIGHT or event.key == pygame.K_d:
+            if event.key == pygame.K_d:
                 self.moving_kx = 0
-            if event.key == pygame.K_DOWN or event.key == pygame.K_s:
+            if event.key == pygame.K_s:
                 self.moving_ky = 0
-            if event.key == pygame.K_UP or event.key == pygame.K_w:
+            if event.key == pygame.K_w:
                 self.moving_ky = 0
+            if event.key in (pygame.K_LEFT, pygame.K_UP, pygame.K_DOWN, pygame.K_RIGHT):
+                self.frame_changing = 0
 
     def moving_event(self, angle):
         self.pos[0] = round(angle / 10) % 36
@@ -192,6 +298,10 @@ class Player(pygame.sprite.Sprite):
 
 
 class Enemy(pygame.sprite.Sprite):
+    image = load_image('enemy-image-1.png')
+    die_images = [load_image('enemy-die-1.png'), load_image('enemy-die-2.png'),
+                  load_image('enemy-die-3.png'), load_image('enemy-die-4.png')]
+
     def __init__(self, *group):
         super().__init__(*group)
         self.image = Enemy.image
@@ -221,61 +331,14 @@ class Enemy(pygame.sprite.Sprite):
 
 
 if __name__ == '__main__':
-    pygame.init()
-    screen = pygame.display.set_mode((WIDTH, HEIGHT))
-    pygame.display.set_caption("Шутер")
-    clock = pygame.time.Clock()
-    Button.images = images = {'main_menu_start_images': [load_image('start-1.png'),
-                                                         load_image('start-2.png'),
-                                                         load_image('start-3.png')],
-                              'main_menu_settings_images': [pygame.transform.scale(load_image('settings-1.png'),
-                                                                                   (233, 100))],
-                              'main_menu_quit_images': [],
-                              'settings_resume_images': [],
-                              'settings_settings_images': [],
-                              'settings_main_menu_images': [],
-                              'settings_quit_images': []}
-    main_menu()
-    image = load_image('blood-1.png')
-    Blood.images = [pygame.transform.scale(image, (i, i)) for i in (1, 2, 3)]
-    image = load_image('player-image-1.png')
-    Player.images = [pygame.transform.rotate(image, i) for i in range(360, 0, -10)]
-    Player.die_images = [load_image('player-die-1.png', -1), load_image('player-die-2.png', -1),
-                         load_image('player-die-3.png')]
-    image = load_image('bullet-1.png')
-    Bullet.images = [pygame.transform.rotate(image, i) for i in range(360, 0, -10)]
-    Enemy.image = load_image('enemy-image-1.png')
-    Enemy.die_images = [load_image('enemy-die-1.png'), load_image('enemy-die-2.png'),
-                        load_image('enemy-die-3.png'), load_image('enemy-die-4.png')]
     all_sprites = pygame.sprite.Group()
     enemy_sprites = pygame.sprite.Group()
     player_bullet_sprites = pygame.sprite.Group()
     enemy_bullet_sprites = pygame.sprite.Group()
-    enemy = Enemy(all_sprites, enemy_sprites)
-    player = Player(all_sprites)
-    Bullet(5, 200, 200, all_sprites)
     running = True
-    enemy_die_time = 0
+    current_window = 'main_menu'
     while running:
-        screen.fill(BLUE)
-        clock.tick(FPS)
-        if player.pos[0] != player.pos[1]:
-            player.pos[0] += player.frame_changing
-            player.pos[0] %= 36
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                running = False
-            if event.type == pygame.KEYDOWN:
-                player.key_press_event(event)
-            if event.type == pygame.KEYUP:
-                player.key_press_event(event)
-            if event.type == pygame.MOUSEBUTTONDOWN:
-                if event.button == 1:
-                    Bullet(player.pos[0], player.rect.x, player.rect.y, all_sprites, player_bullet_sprites)
-            if event.type == pygame.MOUSEMOTION:
-                pass
-            if event.type == pygame.MOUSEWHEEL:
-                pass
-        all_sprites.update()
-        all_sprites.draw(screen)
-        pygame.display.flip()
+        if current_window == 'main_menu':
+            main_menu()
+        if current_window == 'game':
+            game()
