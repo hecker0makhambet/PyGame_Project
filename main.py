@@ -3,6 +3,7 @@ import os
 import sys
 import math
 import random
+from random import choice
 WIDTH = 600
 HEIGHT = 500
 FPS = 30
@@ -15,6 +16,12 @@ frame_changing_map = {'right': [0, 1, 2, -1], 'left': [-2, -1, 0, 1],
                       'up': [1, 2, -1, 0], 'down': [-1, 0, 1, 2]}
 bullet_moving_map = {0: (1, 0), 1: (0.9, 0.1), 2: (0.8, 0.2), 3: (0.7, 0.3), 4: (0.55, 0.45),
                      5: (0.45, 0.55), 6: (0.4, 0.6), 7: (0.3, 0.7), 8: (0.2, 0.8), 9: (0, 1)}
+bullet_pos = {0: (1, 0.5), 1: (0.9, 0.55), 2: (0.85, 0.6), 3: (0.8, 0.65), 4: (0.75, 0.7), 5: (0.7, 0.75),
+              6: (0.65, 0.8), 7: (0.6, 0.9), 8: (0.5, 1), 9: (0.4, 0.9), 10: (0.35, 0.8), 11: (0.3, 0.75),
+              12: (0.25, 0.7), 13: (0.2, 0.65), 14: (0.15, 0.6), 15: (0.1, 0.55), 16: (0.05, 0.6), 17: (0.1, 0.5),
+              18: (1, 0.5), 19: (0.9, 0.55), 20: (0.85, 0.6), 21: (0.8, 0.65), 22: (0.75, 0.7), 23: (0.7, 0.75),
+              24: (0.65, 0.8), 25: (0.6, 0.9), 26: (0.5, 1), 27: (0.5, 1), 28: (0.55, 0.9), 29: (0.6, 0.85),
+              30: (0.65, 0.8), 31: (0.7, 0.75), 32: (0.75, 0.7), 33: (0.8, 0.6), 34: (0.85, 0.55), 35: (0.5, 1)}
 pygame.init()
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Шутер")
@@ -22,21 +29,20 @@ clock = pygame.time.Clock()
 
 
 def clear_sprites():
-    global all_sprites, enemy_sprites, player_bullet_sprites, enemy_bullet_sprites
+    global all_sprites, enemy_sprites, player_bullet_sprites, enemy_bullet_sprites, player_sprites
     all_sprites = pygame.sprite.Group()
     enemy_sprites = pygame.sprite.Group()
     player_bullet_sprites = pygame.sprite.Group()
     enemy_bullet_sprites = pygame.sprite.Group()
+    player_sprites = pygame.sprite.Group()
 
 
 def game():
-    global all_sprites, enemy_sprites, player_bullet_sprites, enemy_bullet_sprites,\
-        enemy_die_time, current_window
+    global all_sprites, enemy_sprites, player_bullet_sprites, enemy_bullet_sprites, player_sprites, current_window
     clear_sprites()
-    enemy = Enemy(all_sprites, enemy_sprites)
+    enemy = Enemy((200, 100), all_sprites, enemy_sprites)
     player = Player(all_sprites)
     game_running = True
-    enemy_die_time = 0
     while game_running:
         screen.fill(BLUE)
         clock.tick(FPS)
@@ -47,16 +53,15 @@ def game():
                 sys.exit()
             if event.type == pygame.KEYDOWN:
                 player.key_press_event(event)
-                if event.key == pygame.K_SPACE:
-                    Bullet(player.pos[0], player.rect.x, player.rect.y, all_sprites, player_bullet_sprites)
                 if event.key == pygame.K_ESCAPE:
                     if pause():
                         return
+                if event.key == pygame.K_c:
+                    Enemy((random.choice(range(WIDTH - 64)), random.choice(range(HEIGHT - 64))), all_sprites, enemy_sprites)
             if event.type == pygame.KEYUP:
                 player.key_press_event(event)
             if event.type == pygame.MOUSEBUTTONDOWN:
-                if event.button == 1:
-                    Bullet(player.pos[0], player.rect.x, player.rect.y, all_sprites, player_bullet_sprites)
+                player.shoot()
             if event.type == pygame.MOUSEMOTION:
                 pass
             if event.type == pygame.MOUSEWHEEL:
@@ -220,7 +225,7 @@ class Bullet(pygame.sprite.Sprite):
         super().__init__(*group)
         self.image = Bullet.images[pos]
         self.rect = self.image.get_rect()
-        self.rect.x, self.rect.y = x, y
+        self.rect.x, self.rect.y = x + 20, y + 15
         self.moving_kx, self.moving_ky = bullet_moving_map[pos % 9]
         if pos // 9 % 2 != 0:
             self.moving_ky, self.moving_kx = self.moving_kx, self.moving_ky
@@ -237,7 +242,9 @@ class Bullet(pygame.sprite.Sprite):
         self.rect = self.rect.move(self.moving_kx * 20, self.moving_ky * 20)
 
     def check_status(self):
-        if pygame.sprite.spritecollideany(self, enemy_sprites):
+        if enemy_bullet_sprites in self.groups() and pygame.sprite.spritecollideany(self, player_sprites):
+            self.kill_value = True
+        if player_bullet_sprites in self.groups() and pygame.sprite.spritecollideany(self, enemy_sprites):
             self.kill_value = True
         if self.rect.x > screen.get_width() or self.rect.y > screen.get_height()\
                 or self.rect.x < 0 or self.rect.y < 0:
@@ -259,27 +266,59 @@ class Player(pygame.sprite.Sprite):
         self.pos = [0, 0]
         self.frame_changing = 0
         self.lastPressedKey = 'right'
+        self.kill_value = False
+        self.player_die_time = 0
 
     def update(self):
-        self.image = Player.images[self.pos[0]]
-        self.rect = self.rect.move(self.moving_kx * 5, self.moving_ky * 5)
+        if self.kill_value:
+            self.die()
+        else:
+            self.image = Player.images[self.pos[0]]
+            self.rect = self.rect.move(self.moving_kx * 5, self.moving_ky * 5)
+        self.check_status()
+
+    def shoot(self):
+        if not self.kill_value:
+            Bullet(self.pos[0], self.rect.x, self.rect.y, all_sprites, player_bullet_sprites)
+
+    def die(self):
+        self.player_die_time += 0.05
+        if self.image != self.die_images[int(self.player_die_time) % 3] and \
+                (self.player_die_time < 5 or int(self.player_die_time) % 3 == 0):
+            x, y = self.rect.x, self.rect.y
+            self.rect = self.image.get_rect()
+            self.rect.x, self.rect.y = x, y
+            create_blood((self.rect.x + 32, self.rect.y + 32), self.rect)
+        self.image = self.die_images[int(self.player_die_time) % 3]
+        if self.player_die_time > 2:
+            self.image = self.die_images[-1]
+        if self.player_die_time >= 20:
+            self.kill()
+        player_sprites.remove(self)
+
+    def check_status(self):
+        if pygame.sprite.spritecollideany(self, enemy_bullet_sprites):
+            self.kill_value = True
 
     def key_press_event(self, event=None):
         if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_a:
-                self.moving_kx = -1
-            if event.key == pygame.K_d:
-                self.moving_kx = 1
-            if event.key == pygame.K_s:
-                self.moving_ky = 1
-            if event.key == pygame.K_w:
-                self.moving_ky = -1
-            if event.key == pygame.K_LEFT:
-                self.frame_changing = -1
-                self.lastPressedKey = 'left'
-            if event.key == pygame.K_RIGHT:
-                self.frame_changing = 1
-                self.lastPressedKey = 'right'
+            if not self.kill_value:
+                if event.key == pygame.K_a:
+                    self.moving_kx = -1
+                if event.key == pygame.K_d:
+                    self.moving_kx = 1
+                if event.key == pygame.K_s:
+                    self.moving_ky = 1
+                if event.key == pygame.K_w:
+                    self.moving_ky = -1
+                if event.key == pygame.K_LEFT:
+                    self.frame_changing = -1
+                    self.lastPressedKey = 'left'
+                if event.key == pygame.K_RIGHT:
+                    self.frame_changing = 1
+                    self.lastPressedKey = 'right'
+                if event.key == pygame.K_SPACE:
+                    self.shoot()
         if event.type == pygame.KEYUP:
             if event.key == pygame.K_a:
                 self.moving_kx = 0
@@ -292,38 +331,46 @@ class Player(pygame.sprite.Sprite):
             if event.key in (pygame.K_LEFT, pygame.K_UP, pygame.K_DOWN, pygame.K_RIGHT):
                 self.frame_changing = 0
 
-    def moving_event(self, angle):
-        self.pos[0] = round(angle / 10) % 36
-        self.pos[1] = self.pos[0]
-
 
 class Enemy(pygame.sprite.Sprite):
     image = load_image('enemy-image-1.png')
     die_images = [load_image('enemy-die-1.png'), load_image('enemy-die-2.png'),
                   load_image('enemy-die-3.png'), load_image('enemy-die-4.png')]
 
-    def __init__(self, *group):
+    def __init__(self, pos, *group):
         super().__init__(*group)
         self.image = Enemy.image
         self.rect = self.image.get_rect()
-        self.rect.x = 100
-        self.rect.y = 100
+        self.rect.x, self.rect.y = pos[0], pos[1]
         self.kill_value = False
+        self.enemy_die_time = 0
+        self.shoot_time = 0
+        self.pos = 0
 
     def update(self):
-        global enemy_die_time
         if self.kill_value:
-            enemy_die_time += clock.tick()
-            if self.image != Enemy.die_images[enemy_die_time % 4] and\
-                    (enemy_die_time < 5 or enemy_die_time % 3 == 0):
-                create_blood((self.rect.x + self.rect.width / 2, self.rect.y + self.rect.height / 2), self.rect)
-            self.image = Enemy.die_images[enemy_die_time % 4]
-            if enemy_die_time > 3:
-                self.image = Enemy.die_images[-1]
-            if enemy_die_time >= 20:
-                self.kill()
-            enemy_sprites.remove(self)
-        self.check_status()
+            self.die()
+        else:
+            self.shoot()
+            self.check_status()
+
+    def shoot(self):
+        self.shoot_time += 0.05
+        if int(self.shoot_time) % 10 == 0:
+            self.shoot_time += 1
+            Bullet(self.pos, self.rect.x, self.rect.y, all_sprites, enemy_bullet_sprites)
+
+    def die(self):
+        self.enemy_die_time += 0.1
+        if self.image != Enemy.die_images[int(self.enemy_die_time) % 4] and \
+                (self.enemy_die_time < 5 or int(self.enemy_die_time % 3) == 0):
+            create_blood((self.rect.x + self.rect.width / 2, self.rect.y + self.rect.height / 2), self.rect)
+        self.image = Enemy.die_images[int(self.enemy_die_time) % 4]
+        if self.enemy_die_time > 3:
+            self.image = Enemy.die_images[-1]
+        if self.enemy_die_time >= 20:
+            self.kill()
+        enemy_sprites.remove(self)
 
     def check_status(self):
         if pygame.sprite.spritecollideany(self, player_bullet_sprites):
@@ -331,10 +378,7 @@ class Enemy(pygame.sprite.Sprite):
 
 
 if __name__ == '__main__':
-    all_sprites = pygame.sprite.Group()
-    enemy_sprites = pygame.sprite.Group()
-    player_bullet_sprites = pygame.sprite.Group()
-    enemy_bullet_sprites = pygame.sprite.Group()
+    clear_sprites()
     running = True
     current_window = 'main_menu'
     while running:
