@@ -31,6 +31,44 @@ enemy_bullet_sprites = pygame.sprite.Group()
 player_sprites = pygame.sprite.Group()
 
 
+def load_level(level):
+    game()
+
+
+def levels():
+    global current_window
+    screen.fill(BLUE)
+    levels_sprites = pygame.sprite.Group()
+    btn_1 = Button('levels_btn1', levels_sprites, (172, 200))
+    btn_2 = Button('levels_btn2', levels_sprites, (256, 200))
+    btn_3 = Button('levels_btn3', levels_sprites, (352, 200))
+    back_btn = Button('levels_back', levels_sprites, (10, 400))
+    levels_running = True
+    while levels_running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                sys.exit()
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    current_window = 'main_menu'
+                    return
+        if btn_1.clicked:
+            load_level(1)
+            return
+        if btn_2.clicked:
+            load_level(2)
+            return
+        if btn_3.clicked:
+            load_level(3)
+            return
+        if back_btn.clicked:
+            current_window = 'main_menu'
+            return
+        levels_sprites.update()
+        levels_sprites.draw(screen)
+        pygame.display.flip()
+
+
 def clear_sprites():
     global all_sprites, enemy_sprites, player_bullet_sprites, enemy_bullet_sprites, player_sprites
     all_sprites.empty()
@@ -41,7 +79,6 @@ def clear_sprites():
 
 
 def game():
-    global current_window
     clear_sprites()
     enemy = Enemy((200, 100), all_sprites, enemy_sprites)
     player = Player(all_sprites)
@@ -73,7 +110,7 @@ def game():
         all_sprites.update()
         all_sprites.draw(screen)
         pygame.display.flip()
-        if player.kill_value:
+        if player.kill_value and player.player_die_time > 10:
             game_over()
             return
 
@@ -83,7 +120,7 @@ def game_over():
     screen.fill(BLUE)
     screen.blit(pygame.transform.scale(load_image('gameover.png'), (WIDTH, HEIGHT)), (0, 0))
     game_over_sprites = pygame.sprite.Group()
-    inscription = Button('game_over_image', game_over_sprites, (75, 400))
+    inscription = Button('game_over', game_over_sprites, (75, 400))
     game_over_running = True
     while game_over_running:
         for event in pygame.event.get():
@@ -106,9 +143,9 @@ def main_menu():
     screen.fill(BLUE)
     main_menu_sprites = pygame.sprite.Group()
     screen.blit(load_image('preview-image-1.png'), (0, 0))
-    start_btn = Button('main_menu_start_images', main_menu_sprites, (200, 100))
-    settings_btn = Button('main_menu_settings_images', main_menu_sprites, (200, 200))
-    quit_btn = Button('main_menu_quit_images', main_menu_sprites, (200, 300))
+    start_btn = Button('main_menu_start', main_menu_sprites, (200, 100))
+    settings_btn = Button('main_menu_settings', main_menu_sprites, (200, 200))
+    quit_btn = Button('main_menu_quit', main_menu_sprites, (200, 300))
     start_screen_running = True
     while start_screen_running:
         for event in pygame.event.get():
@@ -120,7 +157,7 @@ def main_menu():
                 pass
         main_menu_sprites.update()
         if start_btn.clicked:
-            current_window = 'game'
+            current_window = 'levels'
             return
         if settings_btn.clicked:
             settings()
@@ -139,10 +176,10 @@ def pause():
     screen.fill(BLUE)
     pause_sprites = pygame.sprite.Group()
     pause_running = True
-    resume_btn = Button('pause_resume_images', pause_sprites, (200, 0))
-    settings_btn = Button('pause_settings_images', pause_sprites, (200, 110))
-    menu_btn = Button('pause_main_menu_images', pause_sprites, (200, 210))
-    quit_btn = Button('pause_quit_images', pause_sprites, (200, 310))
+    resume_btn = Button('pause_resume', pause_sprites, (200, 0))
+    settings_btn = Button('pause_settings', pause_sprites, (200, 110))
+    menu_btn = Button('pause_main_menu', pause_sprites, (200, 210))
+    quit_btn = Button('pause_quit', pause_sprites, (200, 310))
     while pause_running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -191,22 +228,26 @@ def create_blood(pos, rect):
 
 
 class Button(pygame.sprite.Sprite):
-    images = {'main_menu_start_images': [load_image('start-1.png'),
-                                         load_image('start-2.png'),
-                                         load_image('start-3.png')],
-              'main_menu_settings_images': [pygame.transform.scale(load_image('settings-1.png'), (233, 100)),
-                                            pygame.transform.scale(load_image('settings-2.png', -1), (233, 100))],
-              'main_menu_quit_images': [pygame.transform.scale(load_image('quit-1.png', -1), (233, 100)),
-                                        pygame.transform.scale(load_image('quit-2.png', -1), (233, 100))],
-              'pause_resume_images': [pygame.transform.scale(load_image('resume-1.png', -1), (233, 100)),
-                                      pygame.transform.scale(load_image('resume-2.png', -1), (233, 100))],
-              'pause_settings_images': [pygame.transform.scale(load_image('settings-1.png'), (233, 100)),
-                                        pygame.transform.scale(load_image('settings-2.png', -1), (233, 100))],
-              'pause_main_menu_images': [pygame.transform.scale(load_image('menu-1.png', -1), (233, 100)),
-                                         pygame.transform.scale(load_image('menu-2.png', -1), (233, 100))],
-              'pause_quit_images': [pygame.transform.scale(load_image('quit-1.png', -1), (233, 100)),
-                                    pygame.transform.scale(load_image('quit-2.png', -1), (233, 100))],
-              'game_over_image': [load_image('gameover-inscription.png', -1)]
+    images = {'main_menu_start': [load_image('start-1.png'),
+                                  load_image('start-2.png'),
+                                  load_image('start-3.png')],
+              'main_menu_settings': [pygame.transform.scale(load_image('settings-1.png'), (233, 100)),
+                                     pygame.transform.scale(load_image('settings-2.png', -1), (233, 100))],
+              'main_menu_quit': [pygame.transform.scale(load_image('quit-1.png', -1), (233, 100)),
+                                 pygame.transform.scale(load_image('quit-2.png', -1), (233, 100))],
+              'pause_resume': [pygame.transform.scale(load_image('resume-1.png', -1), (233, 100)),
+                               pygame.transform.scale(load_image('resume-2.png', -1), (233, 100))],
+              'pause_settings': [pygame.transform.scale(load_image('settings-1.png'), (233, 100)),
+                                 pygame.transform.scale(load_image('settings-2.png', -1), (233, 100))],
+              'pause_main_menu': [pygame.transform.scale(load_image('menu-1.png', -1), (233, 100)),
+                                  pygame.transform.scale(load_image('menu-2.png', -1), (233, 100))],
+              'pause_quit': [pygame.transform.scale(load_image('quit-1.png', -1), (233, 100)),
+                             pygame.transform.scale(load_image('quit-2.png', -1), (233, 100))],
+              'game_over': [load_image('gameover-inscription.png', -1)],
+              'levels_btn1': [load_image('btn-1.png')],
+              'levels_btn2': [load_image('btn-2.png')],
+              'levels_btn3': [load_image('btn-3.png')],
+              'levels_back': [load_image('back-1.png')]
               }
 
     def __init__(self, name, group, pos):
@@ -413,5 +454,5 @@ if __name__ == '__main__':
     while running:
         if current_window == 'main_menu':
             main_menu()
-        if current_window == 'game':
-            game()
+        if current_window == 'levels':
+            levels()
