@@ -1,9 +1,7 @@
 import pygame
 import os
 import sys
-import math
 import random
-from random import choice
 WIDTH = 600
 HEIGHT = 500
 FPS = 30
@@ -26,19 +24,24 @@ pygame.init()
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Шутер")
 clock = pygame.time.Clock()
+all_sprites = pygame.sprite.Group()
+enemy_sprites = pygame.sprite.Group()
+player_bullet_sprites = pygame.sprite.Group()
+enemy_bullet_sprites = pygame.sprite.Group()
+player_sprites = pygame.sprite.Group()
 
 
 def clear_sprites():
     global all_sprites, enemy_sprites, player_bullet_sprites, enemy_bullet_sprites, player_sprites
-    all_sprites = pygame.sprite.Group()
-    enemy_sprites = pygame.sprite.Group()
-    player_bullet_sprites = pygame.sprite.Group()
-    enemy_bullet_sprites = pygame.sprite.Group()
-    player_sprites = pygame.sprite.Group()
+    all_sprites.empty()
+    enemy_sprites.empty()
+    player_bullet_sprites.empty()
+    enemy_bullet_sprites.empty()
+    player_sprites.empty()
 
 
 def game():
-    global all_sprites, enemy_sprites, player_bullet_sprites, enemy_bullet_sprites, player_sprites, current_window
+    global current_window
     clear_sprites()
     enemy = Enemy((200, 100), all_sprites, enemy_sprites)
     player = Player(all_sprites)
@@ -57,7 +60,8 @@ def game():
                     if pause():
                         return
                 if event.key == pygame.K_c:
-                    Enemy((random.choice(range(WIDTH - 64)), random.choice(range(HEIGHT - 64))), all_sprites, enemy_sprites)
+                    Enemy((random.choice(range(WIDTH - 64)), random.choice(range(HEIGHT - 64))),
+                          all_sprites, enemy_sprites)
             if event.type == pygame.KEYUP:
                 player.key_press_event(event)
             if event.type == pygame.MOUSEBUTTONDOWN:
@@ -68,6 +72,32 @@ def game():
                 pass
         all_sprites.update()
         all_sprites.draw(screen)
+        pygame.display.flip()
+        if player.kill_value:
+            game_over()
+            return
+
+
+def game_over():
+    global current_window
+    screen.fill(BLUE)
+    screen.blit(pygame.transform.scale(load_image('gameover.png'), (WIDTH, HEIGHT)), (0, 0))
+    game_over_sprites = pygame.sprite.Group()
+    inscription = Button('game_over_image', game_over_sprites, (75, 400))
+    game_over_running = True
+    while game_over_running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                sys.exit()
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                return
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    current_window = 'main_menu'
+                    return
+                if event.key == pygame.K_SPACE:
+                    return
+        game_over_sprites.draw(screen)
         pygame.display.flip()
 
 
@@ -139,7 +169,7 @@ def load_image(*name, colorkey=None):
         if type(i) != str:
             name = list(name)
             colorkey = name.pop(name.index(i))
-    fullname = os.path.join('data', *name)
+    fullname = os.path.join('data', 'images', *name)
     if not os.path.isfile(fullname):
         sys.exit()
     image = pygame.image.load(fullname)
@@ -164,30 +194,19 @@ class Button(pygame.sprite.Sprite):
     images = {'main_menu_start_images': [load_image('start-1.png'),
                                          load_image('start-2.png'),
                                          load_image('start-3.png')],
-              'main_menu_settings_images': [pygame.transform.scale(load_image('settings-1.png'),
-                                                               (233, 100)),
-                                        pygame.transform.scale(load_image('settings-2.png', -1),
-                                                               (233, 100))],
-              'main_menu_quit_images': [pygame.transform.scale(load_image('quit-1.png', -1),
-                                                               (233, 100)),
-                                        pygame.transform.scale(load_image('quit-2.png', -1),
-                                                               (233, 100))],
-              'pause_resume_images': [pygame.transform.scale(load_image('resume-1.png', -1),
-                                                             (233, 100)),
-                                      pygame.transform.scale(load_image('resume-2.png', -1),
-                                                             (233, 100))],
-              'pause_settings_images': [pygame.transform.scale(load_image('settings-1.png'),
-                                                               (233, 100)),
-                                        pygame.transform.scale(load_image('settings-2.png', -1),
-                                                               (233, 100))],
-              'pause_main_menu_images': [pygame.transform.scale(load_image('menu-1.png', -1),
-                                                                (233, 100)),
-                                         pygame.transform.scale(load_image('menu-2.png', -1),
-                                                                (233, 100))],
-              'pause_quit_images': [pygame.transform.scale(load_image('quit-1.png', -1),
-                                                           (233, 100)),
-                                    pygame.transform.scale(load_image('quit-2.png', -1),
-                                                           (233, 100))],
+              'main_menu_settings_images': [pygame.transform.scale(load_image('settings-1.png'), (233, 100)),
+                                            pygame.transform.scale(load_image('settings-2.png', -1), (233, 100))],
+              'main_menu_quit_images': [pygame.transform.scale(load_image('quit-1.png', -1), (233, 100)),
+                                        pygame.transform.scale(load_image('quit-2.png', -1), (233, 100))],
+              'pause_resume_images': [pygame.transform.scale(load_image('resume-1.png', -1), (233, 100)),
+                                      pygame.transform.scale(load_image('resume-2.png', -1), (233, 100))],
+              'pause_settings_images': [pygame.transform.scale(load_image('settings-1.png'), (233, 100)),
+                                        pygame.transform.scale(load_image('settings-2.png', -1), (233, 100))],
+              'pause_main_menu_images': [pygame.transform.scale(load_image('menu-1.png', -1), (233, 100)),
+                                         pygame.transform.scale(load_image('menu-2.png', -1), (233, 100))],
+              'pause_quit_images': [pygame.transform.scale(load_image('quit-1.png', -1), (233, 100)),
+                                    pygame.transform.scale(load_image('quit-2.png', -1), (233, 100))],
+              'game_over_image': [load_image('gameover-inscription.png', -1)]
               }
 
     def __init__(self, name, group, pos):
@@ -343,13 +362,13 @@ class Player(pygame.sprite.Sprite):
 
 
 class Enemy(pygame.sprite.Sprite):
-    image = load_image('enemy-image-1.png')
+    images = [pygame.transform.rotate(load_image('enemy-image-1.png'), i) for i in range(360, 0, -10)]
     die_images = [load_image('enemy-die-1.png'), load_image('enemy-die-2.png'),
                   load_image('enemy-die-3.png'), load_image('enemy-die-4.png')]
 
     def __init__(self, pos, *group):
         super().__init__(*group)
-        self.image = Enemy.image
+        self.image = Enemy.images[0]
         self.rect = self.image.get_rect()
         self.rect.x, self.rect.y = pos[0], pos[1]
         self.kill_value = False
@@ -365,7 +384,7 @@ class Enemy(pygame.sprite.Sprite):
             self.check_status()
 
     def shoot(self):
-        self.shoot_time += 0.05
+        self.shoot_time += 0.4
         if int(self.shoot_time) % 10 == 0:
             self.shoot_time += 1
             Bullet(self.pos, self.rect.x, self.rect.y, all_sprites, enemy_bullet_sprites)
