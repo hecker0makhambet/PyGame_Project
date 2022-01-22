@@ -165,16 +165,28 @@ class Button(pygame.sprite.Sprite):
                                          load_image('start-2.png'),
                                          load_image('start-3.png')],
               'main_menu_settings_images': [pygame.transform.scale(load_image('settings-1.png'),
-                                                                   (233, 100))],
+                                                               (233, 100)),
+                                        pygame.transform.scale(load_image('settings-2.png', -1),
+                                                               (233, 100))],
               'main_menu_quit_images': [pygame.transform.scale(load_image('quit-1.png', -1),
+                                                               (233, 100)),
+                                        pygame.transform.scale(load_image('quit-2.png', -1),
                                                                (233, 100))],
               'pause_resume_images': [pygame.transform.scale(load_image('resume-1.png', -1),
+                                                             (233, 100)),
+                                      pygame.transform.scale(load_image('resume-2.png', -1),
                                                              (233, 100))],
               'pause_settings_images': [pygame.transform.scale(load_image('settings-1.png'),
+                                                               (233, 100)),
+                                        pygame.transform.scale(load_image('settings-2.png', -1),
                                                                (233, 100))],
               'pause_main_menu_images': [pygame.transform.scale(load_image('menu-1.png', -1),
+                                                                (233, 100)),
+                                         pygame.transform.scale(load_image('menu-2.png', -1),
                                                                 (233, 100))],
               'pause_quit_images': [pygame.transform.scale(load_image('quit-1.png', -1),
+                                                           (233, 100)),
+                                    pygame.transform.scale(load_image('quit-2.png', -1),
                                                            (233, 100))],
               }
 
@@ -190,9 +202,7 @@ class Button(pygame.sprite.Sprite):
         if self.rect.collidepoint(pygame.mouse.get_pos()):
             if any(pygame.mouse.get_pressed()):
                 self.clicked = True
-                if len(self.image_list) != 1:
-                    self.image = self.image_list[2]
-            elif len(self.image_list) != 1:
+            if len(self.image_list) != 1:
                 self.image = self.image_list[1]
         else:
             self.image = self.image_list[0]
