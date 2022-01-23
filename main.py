@@ -29,10 +29,32 @@ enemy_sprites = pygame.sprite.Group()
 player_bullet_sprites = pygame.sprite.Group()
 enemy_bullet_sprites = pygame.sprite.Group()
 player_sprites = pygame.sprite.Group()
+wall_sprites = pygame.sprite.Group()
 
 
 def load_level(level):
-    game()
+    clear_sprites()
+    if level == 1:
+        name = 'map-1.png'
+        lev = open('data\\level1.txt', encoding='utf-8')
+    elif level == 2:
+        name = 'map-2.png'
+        lev = open('data\\level2.txt', encoding='utf-8')
+    else:
+        name = 'map-3.png'
+        lev = open('data\\level3.txt', encoding='utf-8')
+    lev_info = lev.read().split('\n')
+    walls = [[int(j) for j in i.split()] for i in lev_info[0].split('|')]
+    player_pos = [int(i) for i in lev_info[1].split()]
+    for i in walls:
+        Walls(i, wall_sprites, all_sprites)
+    image = pygame.transform.scale(load_image(name), (WIDTH, HEIGHT))
+    generate_level(image, player_pos)
+
+
+def generate_level(image, pos):
+    screen.blit(image, (0, 0))
+    game(image, pos)
 
 
 def levels():
@@ -70,21 +92,21 @@ def levels():
 
 
 def clear_sprites():
-    global all_sprites, enemy_sprites, player_bullet_sprites, enemy_bullet_sprites, player_sprites
     all_sprites.empty()
     enemy_sprites.empty()
     player_bullet_sprites.empty()
     enemy_bullet_sprites.empty()
     player_sprites.empty()
+    wall_sprites.empty()
 
 
-def game():
-    clear_sprites()
+def game(image, pos):
     enemy = Enemy((200, 100), all_sprites, enemy_sprites)
-    player = Player(all_sprites)
+    player = Player(pos, all_sprites)
     game_running = True
     while game_running:
         screen.fill(BLUE)
+        screen.blit(image, (0, 0))
         clock.tick(FPS)
         player.pos[0] += player.frame_changing
         player.pos[0] %= 36
@@ -227,6 +249,14 @@ def create_blood(pos, rect):
         Blood(pos, random.choice(range(-5, 6)), random.choice(range(-5, 6)), rect)
 
 
+class Walls(pygame.sprite.Sprite):
+    def __init__(self, rect, *group):
+        super().__init__(*group)
+        self.image = pygame.transform.scale(load_image('blood-1.png', -1), (rect[2], rect[3]))
+        self.rect = self.image.get_rect()
+        self.rect.x, self.rect.y = rect[0], rect[1]
+
+
 class Button(pygame.sprite.Sprite):
     images = {'main_menu_start': [load_image('start-1.png'),
                                   load_image('start-2.png'),
@@ -244,10 +274,11 @@ class Button(pygame.sprite.Sprite):
               'pause_quit': [pygame.transform.scale(load_image('quit-1.png', -1), (233, 100)),
                              pygame.transform.scale(load_image('quit-2.png', -1), (233, 100))],
               'game_over': [load_image('gameover-inscription.png', -1)],
-              'levels_btn1': [load_image('btn-1.png')],
-              'levels_btn2': [load_image('btn-2.png')],
-              'levels_btn3': [load_image('btn-3.png')],
-              'levels_back': [load_image('back-1.png')]
+              'levels_btn1': [pygame.transform.scale(load_image('btn-1.png', -1), (64, 64))],
+              'levels_btn2': [pygame.transform.scale(load_image('btn-2.png', -1), (64, 64))],
+              'levels_btn3': [pygame.transform.scale(load_image('btn-3.png', -1), (64, 64))],
+              'levels_back': [pygame.transform.scale(load_image('back-1.png', -1), (128, 64)),
+                              pygame.transform.scale(load_image('back-2.png', -1), (128, 64))]
               }
 
     def __init__(self, name, group, pos):
@@ -316,6 +347,8 @@ class Bullet(pygame.sprite.Sprite):
             self.kill_value = True
         if player_bullet_sprites in self.groups() and pygame.sprite.spritecollideany(self, enemy_sprites):
             self.kill_value = True
+        if pygame.sprite.spritecollideany(self, wall_sprites):
+            self.kill()
         if self.rect.x > screen.get_width() or self.rect.y > screen.get_height()\
                 or self.rect.x < 0 or self.rect.y < 0:
             self.kill_value = True
@@ -326,12 +359,11 @@ class Player(pygame.sprite.Sprite):
     die_images = [load_image('player-die-1.png', -1), load_image('player-die-2.png', -1),
                   load_image('player-die-3.png')]
 
-    def __init__(self, *group):
+    def __init__(self, pos, *group):
         super().__init__(*group)
         self.image = Player.images[0]
         self.rect = self.image.get_rect()
-        self.rect.x = 10
-        self.rect.y = 10
+        self.rect.x, self.rect.y = pos
         self.moving_kx, self.moving_ky = 0, 0
         self.pos = [0, 0]
         self.frame_changing = 0
@@ -345,6 +377,8 @@ class Player(pygame.sprite.Sprite):
         else:
             self.image = Player.images[self.pos[0]]
             self.rect = self.rect.move(self.moving_kx * 5, self.moving_ky * 5)
+            if pygame.sprite.spritecollideany(self, wall_sprites):
+                self.rect = self.rect.move(-self.moving_kx * 5, -self.moving_ky * 5)
         self.check_status()
 
     def shoot(self):
