@@ -49,15 +49,16 @@ def load_level(level):
     for i in walls:
         Walls(i, wall_sprites, all_sprites)
     image = pygame.transform.scale(load_image(name), (WIDTH, HEIGHT))
-    generate_level(image, player_pos)
+    generate_level(image, player_pos, level)
 
 
-def generate_level(image, pos):
+def generate_level(image, pos, level):
     screen.blit(image, (0, 0))
-    game(image, pos)
+    game(image, pos, level)
 
 
 def levels():
+    opened_levels = open('data\\opened_levels.txt', mode='r', encoding='utf-8').read().split()[0]
     global current_window
     screen.fill(BLUE)
     levels_sprites = pygame.sprite.Group()
@@ -78,11 +79,17 @@ def levels():
             load_level(1)
             return
         if btn_2.clicked:
-            load_level(2)
-            return
+            if int(opened_levels) >= 2:
+                load_level(2)
+                return
+            else:
+                return
         if btn_3.clicked:
-            load_level(3)
-            return
+            if int(opened_levels) >= 3:
+                load_level(3)
+                return
+            else:
+                return
         if back_btn.clicked:
             current_window = 'main_menu'
             return
@@ -100,7 +107,9 @@ def clear_sprites():
     wall_sprites.empty()
 
 
-def game(image, pos):
+def game(image, pos, level):
+    score = 0
+    enemy_count = 1
     enemy = Enemy((200, 100), all_sprites, enemy_sprites)
     player = Player(pos, all_sprites)
     game_running = True
@@ -119,6 +128,7 @@ def game(image, pos):
                     if pause():
                         return
                 if event.key == pygame.K_c:
+                    enemy_count += 1
                     Enemy((random.choice(range(WIDTH - 64)), random.choice(range(HEIGHT - 64))),
                           all_sprites, enemy_sprites)
             if event.type == pygame.KEYUP:
@@ -132,17 +142,53 @@ def game(image, pos):
         all_sprites.update()
         all_sprites.draw(screen)
         pygame.display.flip()
+        score = enemy_count - len(enemy_sprites)
         if player.kill_value and player.player_die_time > 10:
-            game_over()
+            game_over(score)
+            return
+        if len(enemy_sprites) == 0:
+            you_win(score, level)
             return
 
 
-def game_over():
+def you_win(score, level):
+    global current_window
+    with open('data\\opened_levels.txt', mode='w', encoding='utf-8') as z:
+        print(str(level + 1), end='', file=z)
+    image = pygame.transform.scale(load_image('you_win.png'), (WIDTH, HEIGHT))
+    screen.fill(BLUE)
+    screen.blit(image, (0, 0))
+    font = pygame.font.Font(None, 35)
+    text_score = font.render('SCORE:', True, (255, 0, 0))
+    text_score_int = font.render(str(score), True, (255, 0, 0))
+    you_win_running = True
+    while you_win_running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                sys.exit()
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_SPACE:
+                    return
+                if event.key == pygame.K_ESCAPE:
+                    current_window = 'main_menu'
+                    return
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                return
+        screen.blit(text_score, (420, 30))
+        screen.blit(text_score_int, (520, 30))
+        pygame.display.flip()
+
+
+def game_over(score):
     global current_window
     screen.fill(BLUE)
     screen.blit(pygame.transform.scale(load_image('gameover.png'), (WIDTH, HEIGHT)), (0, 0))
     game_over_sprites = pygame.sprite.Group()
-    inscription = Button('game_over', game_over_sprites, (75, 400))
+    font = pygame.font.Font(None, 35)
+    text_score = font.render('SCORE:', True, (255, 0, 0))
+    text_score_int = font.render(str(score), True, (255, 0, 0))
+    text_restart = font.render('PRESS SPACE TO RESTART', True, (255, 0, 0))
+    text_menu = font.render('PRESS ESC TO GO TO THE MAIN MENU', True, (255, 0, 0))
     game_over_running = True
     while game_over_running:
         for event in pygame.event.get():
@@ -157,6 +203,10 @@ def game_over():
                 if event.key == pygame.K_SPACE:
                     return
         game_over_sprites.draw(screen)
+        screen.blit(text_score, (125, 370))
+        screen.blit(text_score_int, (250, 370))
+        screen.blit(text_restart, (120, 400))
+        screen.blit(text_menu, (75, 430))
         pygame.display.flip()
 
 
@@ -183,6 +233,7 @@ def main_menu():
             return
         if settings_btn.clicked:
             settings()
+            return
         if quit_btn.clicked:
             sys.exit()
         main_menu_sprites.draw(screen)
@@ -190,7 +241,24 @@ def main_menu():
 
 
 def settings():
-    pass
+    screen.fill(BLUE)
+    settings_sprites = pygame.sprite.Group()
+    settings_running = True
+    delete_btn = Button('delete_progress', settings_sprites, (100, HEIGHT / 2))
+    while settings_running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                sys.exit()
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    return
+        if delete_btn.clicked:
+            text = open('data\\opened_levels.txt', mode='w', encoding='utf-8')
+            print('1', end='', file=text)
+            text.close()
+        settings_sprites.update()
+        settings_sprites.draw(screen)
+        pygame.display.flip()
 
 
 def pause():
@@ -273,12 +341,15 @@ class Button(pygame.sprite.Sprite):
                                   pygame.transform.scale(load_image('menu-2.png', -1), (233, 100))],
               'pause_quit': [pygame.transform.scale(load_image('quit-1.png', -1), (233, 100)),
                              pygame.transform.scale(load_image('quit-2.png', -1), (233, 100))],
-              'game_over': [load_image('gameover-inscription.png', -1)],
-              'levels_btn1': [pygame.transform.scale(load_image('btn-1.png', -1), (64, 64))],
-              'levels_btn2': [pygame.transform.scale(load_image('btn-2.png', -1), (64, 64))],
-              'levels_btn3': [pygame.transform.scale(load_image('btn-3.png', -1), (64, 64))],
+              'levels_btn1': [pygame.transform.scale(load_image('btn-1-1.png', -1), (64, 64)),
+                              pygame.transform.scale(load_image('btn-1-2.png', -1), (64, 64))],
+              'levels_btn2': [pygame.transform.scale(load_image('btn-2-1.png', -1), (64, 64)),
+                              pygame.transform.scale(load_image('btn-2-2.png', -1), (64, 64))],
+              'levels_btn3': [pygame.transform.scale(load_image('btn-3-1.png', -1), (64, 64)),
+                              pygame.transform.scale(load_image('btn-3-2.png', -1), (64, 64))],
               'levels_back': [pygame.transform.scale(load_image('back-1.png', -1), (128, 64)),
-                              pygame.transform.scale(load_image('back-2.png', -1), (128, 64))]
+                              pygame.transform.scale(load_image('back-2.png', -1), (128, 64))],
+              'delete_progress': [pygame.transform.scale(load_image('delete-progress.png', -1), (400, 70))]
               }
 
     def __init__(self, name, group, pos):
@@ -370,6 +441,7 @@ class Player(pygame.sprite.Sprite):
         self.lastPressedKey = 'right'
         self.kill_value = False
         self.player_die_time = 0
+        self.score = 0
 
     def update(self):
         if self.kill_value:
@@ -466,6 +538,7 @@ class Enemy(pygame.sprite.Sprite):
 
     def die(self):
         self.enemy_die_time += 0.1
+        enemy_sprites.remove(self)
         if self.image != Enemy.die_images[int(self.enemy_die_time) % 4] and \
                 (self.enemy_die_time < 5 or int(self.enemy_die_time % 3) == 0):
             create_blood((self.rect.x + self.rect.width / 2, self.rect.y + self.rect.height / 2), self.rect)
@@ -474,7 +547,6 @@ class Enemy(pygame.sprite.Sprite):
             self.image = Enemy.die_images[-1]
         if self.enemy_die_time >= 20:
             self.kill()
-        enemy_sprites.remove(self)
 
     def check_status(self):
         if pygame.sprite.spritecollideany(self, player_bullet_sprites):
