@@ -32,6 +32,22 @@ player_sprites = pygame.sprite.Group()
 wall_sprites = pygame.sprite.Group()
 
 
+def find_moving_k(points):
+    a = {0: [], 1: [], 2: [], 3: []}
+    for i, j in enumerate(points):
+        if points[i][0] == points[(i + 1) % 4][0]:
+            if points[i][1] > points[(i + 1) % 4][1]:
+                a[i] = (0, -1)
+            else:
+                a[i] = (0, 1)
+        if points[i][1] == points[(i + 1) % 4][1]:
+            if points[i][0] > points[(i + 1) % 4][0]:
+                a[i] = (-1, 0)
+            else:
+                a[i] = (1, 0)
+    return a
+
+
 def load_level(level):
     clear_sprites()
     if level == 1:
@@ -46,15 +62,25 @@ def load_level(level):
     lev_info = lev.read().split('\n')
     walls = [[int(j) for j in i.split()] for i in lev_info[0].split('|')]
     player_pos = [int(i) for i in lev_info[1].split()]
+    enemy_pos = [[j for j in i.split('|')] for i in lev_info[2:]]
     for i in walls:
         Walls(i, wall_sprites, all_sprites)
     image = pygame.transform.scale(load_image(name), (WIDTH, HEIGHT))
-    generate_level(image, player_pos, level)
+    generate_level(image, player_pos, level, enemy_pos)
 
 
-def generate_level(image, pos, level):
+def generate_level(image, pos, level, enemy_pos):
     screen.blit(image, (0, 0))
-    game(image, pos, level)
+    game(image, pos, level, enemy_pos)
+
+
+def clear_sprites():
+    all_sprites.empty()
+    enemy_sprites.empty()
+    player_bullet_sprites.empty()
+    enemy_bullet_sprites.empty()
+    player_sprites.empty()
+    wall_sprites.empty()
 
 
 def levels():
@@ -98,19 +124,10 @@ def levels():
         pygame.display.flip()
 
 
-def clear_sprites():
-    all_sprites.empty()
-    enemy_sprites.empty()
-    player_bullet_sprites.empty()
-    enemy_bullet_sprites.empty()
-    player_sprites.empty()
-    wall_sprites.empty()
-
-
-def game(image, pos, level):
-    score = 0
-    enemy_count = 1
-    enemy = Enemy((200, 100), all_sprites, enemy_sprites)
+def game(image, pos, level, enemy_pos):
+    enemy_count = len(enemy_pos)
+    for i in enemy_pos:
+        Enemy(i, level, all_sprites, enemy_sprites)
     player = Player(pos, all_sprites)
     game_running = True
     while game_running:
@@ -127,10 +144,6 @@ def game(image, pos, level):
                 if event.key == pygame.K_ESCAPE:
                     if pause():
                         return
-                if event.key == pygame.K_c:
-                    enemy_count += 1
-                    Enemy((random.choice(range(WIDTH - 64)), random.choice(range(HEIGHT - 64))),
-                          all_sprites, enemy_sprites)
             if event.type == pygame.KEYUP:
                 player.key_press_event(event)
             if event.type == pygame.MOUSEBUTTONDOWN:
@@ -245,6 +258,7 @@ def settings():
     settings_sprites = pygame.sprite.Group()
     settings_running = True
     delete_btn = Button('delete_progress', settings_sprites, (100, HEIGHT / 2))
+    back_btn = Button('levels_back', settings_sprites, (10, 400))
     while settings_running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -256,6 +270,8 @@ def settings():
             text = open('data\\opened_levels.txt', mode='w', encoding='utf-8')
             print('1', end='', file=text)
             text.close()
+        if back_btn.clicked:
+            return
         settings_sprites.update()
         settings_sprites.draw(screen)
         pygame.display.flip()
@@ -359,11 +375,16 @@ class Button(pygame.sprite.Sprite):
         self.rect = self.image.get_rect()
         self.rect.x, self.rect.y = pos
         self.clicked = False
+        self.clicked_time = 0
 
     def update(self):
+        if self.clicked_time > 0:
+            self.clicked_time += 1
+        if self.clicked_time > 20:
+            self.clicked = True
         if self.rect.collidepoint(pygame.mouse.get_pos()):
             if any(pygame.mouse.get_pressed()):
-                self.clicked = True
+                self.clicked_time = 1
             if len(self.image_list) != 1:
                 self.image = self.image_list[1]
         else:
@@ -513,20 +534,54 @@ class Enemy(pygame.sprite.Sprite):
     die_images = [load_image('enemy-die-1.png'), load_image('enemy-die-2.png'),
                   load_image('enemy-die-3.png'), load_image('enemy-die-4.png')]
 
-    def __init__(self, pos, *group):
+    def __init__(self, pos, hurt_count, *group):
         super().__init__(*group)
+        pos = [[int(j) for j in i.split()] for i in pos]
+        self.positions = pos
+        self.positions_num = 0
+        self.moving_k = find_moving_k(pos)
+        self.moving_kx, self.moving_ky = self.moving_k[self.positions_num]
         self.image = Enemy.images[0]
         self.rect = self.image.get_rect()
-        self.rect.x, self.rect.y = pos[0], pos[1]
+        self.rect.x, self.rect.y = pos[0][0], pos[0][1]
         self.kill_value = False
         self.enemy_die_time = 0
         self.shoot_time = 0
-        self.pos = 0
+        self.pos = [pos[0][2], pos[0][2]]
+        self.frame_changing_k = 0
+        self.hurt_count = 0
+        self.hurt = False
+        self.die_hurt_count = hurt_count
 
     def update(self):
         if self.kill_value:
             self.die()
         else:
+            if abs(self.pos[0] - self.pos[1]) < 36 - abs(self.pos[0] - self.pos[1]):
+                if self.pos[0] > self.pos[1]:
+                    self.frame_changing_k = -1
+                else:
+                    self.frame_changing_k = 1
+            elif abs(self.pos[0] - self.pos[1]) > 36 - abs(self.pos[0] - self.pos[1]):
+                if self.pos[0] > self.pos[1]:
+                    self.frame_changing_k = 1
+                else:
+                    self.frame_changing_k = -1
+            else:
+                self.frame_changing_k = 0
+            self.image = self.images[int(self.pos[0])]
+            self.rect = self.rect.move(self.moving_kx * 3, self.moving_ky * 3)
+            if abs(self.rect.x - self.positions[(self.positions_num + 1) % 4][0]) < 3 and\
+                    abs(self.rect.y - self.positions[(self.positions_num + 1) % 4][1]) < 3:
+                self.moving_kx, self.moving_ky = self.moving_k[(self.positions_num + 1) % 4]
+                self.positions_num += 1
+                self.positions_num %= 4
+                self.pos = [self.pos[1], self.positions[self.positions_num][2]]
+            if self.pos[0] != self.pos[1]:
+                self.pos[0] += self.frame_changing_k
+                if self.pos[0] < 0:
+                    self.pos[0] += 36
+                self.pos[0] %= 36
             self.shoot()
             self.check_status()
 
@@ -534,7 +589,7 @@ class Enemy(pygame.sprite.Sprite):
         self.shoot_time += 0.4
         if int(self.shoot_time) % 10 == 0:
             self.shoot_time += 1
-            Bullet(self.pos, self.rect.x, self.rect.y, all_sprites, enemy_bullet_sprites)
+            Bullet(int(self.pos[0]), self.rect.x, self.rect.y, all_sprites, enemy_bullet_sprites)
 
     def die(self):
         self.enemy_die_time += 0.1
@@ -549,8 +604,15 @@ class Enemy(pygame.sprite.Sprite):
             self.kill()
 
     def check_status(self):
-        if pygame.sprite.spritecollideany(self, player_bullet_sprites):
+        if pygame.sprite.spritecollideany(self, player_bullet_sprites) and not self.hurt:
+            self.hurt_count += 1
+            create_blood((self.rect.x + self.rect.width / 2, self.rect.y + self.rect.height / 2), self.rect)
+            create_blood((self.rect.x + self.rect.width / 2, self.rect.y + self.rect.height / 2), self.rect)
+            self.hurt = True
+        elif self.hurt_count == self.die_hurt_count:
             self.kill_value = True
+        else:
+            self.hurt = False
 
 
 if __name__ == '__main__':
