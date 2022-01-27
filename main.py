@@ -378,7 +378,8 @@ class Button(pygame.sprite.Sprite):  # класс кнопок
                               pygame.transform.scale(load_image('btn-3-2.png', -1), (64, 64))],
               'levels_back': [pygame.transform.scale(load_image('back-1.png', -1), (128, 64)),
                               pygame.transform.scale(load_image('back-2.png', -1), (128, 64))],
-              'delete_progress': [pygame.transform.scale(load_image('delete-progress.png', -1), (400, 70))]
+              'delete_progress': [pygame.transform.scale(load_image('delete1.png', -1), (400, 70)),
+                                  pygame.transform.scale(load_image('delete2.png', -1), (400, 70))]
               }
 
     def __init__(self, name, group, pos):
@@ -395,9 +396,9 @@ class Button(pygame.sprite.Sprite):  # класс кнопок
             self.clicked_time += 1
         if self.clicked_time > 20:  # если прошло определенное количество времени, установить флажок, обнулить отсчет
             self.clicked = True
-            self.clicked_time = 0
-        elif self.clicked_time == 0:  # если отсчет обнулен, снять флажок
+        elif self.clicked_time > 30:  # если отсчет обнулен, снять флажок
             self.clicked = False
+            self.clicked_time = 0
         if self.rect.collidepoint(pygame.mouse.get_pos()):  # если положение мыши находится на этой кнопке
             if any(pygame.mouse.get_pressed()):  # если мышь нажата, начать отсчет
                 self.clicked_time = 1
