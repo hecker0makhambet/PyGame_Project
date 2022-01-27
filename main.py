@@ -2,6 +2,9 @@ import pygame
 import os
 import sys
 import random
+# Нужно написать комментарии
+# Нужно сделать презентацию
+# Нужно написать документацию
 WIDTH = 600
 HEIGHT = 500
 FPS = 30
@@ -87,6 +90,7 @@ def levels():
     opened_levels = open('data\\opened_levels.txt', mode='r', encoding='utf-8').read().split()[0]
     global current_window
     screen.fill(BLUE)
+    screen.blit(pygame.transform.scale(load_image('фон.png'), (WIDTH, 336)), (0, 0))
     levels_sprites = pygame.sprite.Group()
     btn_1 = Button('levels_btn1', levels_sprites, (172, 200))
     btn_2 = Button('levels_btn2', levels_sprites, (256, 200))
@@ -168,7 +172,10 @@ def you_win(score, level):
     global current_window
     with open('data\\opened_levels.txt', mode='w', encoding='utf-8') as z:
         print(str(level + 1), end='', file=z)
-    image = pygame.transform.scale(load_image('you_win.png'), (WIDTH, HEIGHT))
+    if level < 3:
+        image = pygame.transform.scale(load_image('you_win.png'), (WIDTH, HEIGHT))
+    else:
+        image = pygame.transform.scale(load_image('конец.png'), (WIDTH, HEIGHT))
     screen.fill(BLUE)
     screen.blit(image, (0, 0))
     font = pygame.font.Font(None, 35)
@@ -227,10 +234,10 @@ def main_menu():
     global current_window
     screen.fill(BLUE)
     main_menu_sprites = pygame.sprite.Group()
-    screen.blit(load_image('preview-image-1.png'), (0, 0))
-    start_btn = Button('main_menu_start', main_menu_sprites, (200, 100))
-    settings_btn = Button('main_menu_settings', main_menu_sprites, (200, 200))
-    quit_btn = Button('main_menu_quit', main_menu_sprites, (200, 300))
+    screen.blit(pygame.transform.scale(load_image('preview-image-1.png'), (WIDTH, HEIGHT)), (0, 0))
+    start_btn = Button('main_menu_start', main_menu_sprites, (367, 200))
+    settings_btn = Button('main_menu_settings', main_menu_sprites, (367, 300))
+    quit_btn = Button('main_menu_quit', main_menu_sprites, (367, 400))
     start_screen_running = True
     while start_screen_running:
         for event in pygame.event.get():
@@ -256,6 +263,7 @@ def main_menu():
 def settings():
     screen.fill(BLUE)
     settings_sprites = pygame.sprite.Group()
+    screen.blit(pygame.transform.scale(load_image('фон2.png'), (WIDTH, 338)), (0, 80))
     settings_running = True
     delete_btn = Button('delete_progress', settings_sprites, (100, HEIGHT / 2))
     back_btn = Button('levels_back', settings_sprites, (10, 400))
@@ -281,11 +289,12 @@ def pause():
     global current_window
     screen.fill(BLUE)
     pause_sprites = pygame.sprite.Group()
+    screen.blit(pygame.transform.scale(load_image('фон3.png'), (WIDTH, HEIGHT)), (0, 0))
     pause_running = True
-    resume_btn = Button('pause_resume', pause_sprites, (200, 0))
-    settings_btn = Button('pause_settings', pause_sprites, (200, 110))
-    menu_btn = Button('pause_main_menu', pause_sprites, (200, 210))
-    quit_btn = Button('pause_quit', pause_sprites, (200, 310))
+    resume_btn = Button('pause_resume', pause_sprites, (367, 0))
+    settings_btn = Button('pause_settings', pause_sprites, (367, 110))
+    menu_btn = Button('pause_main_menu', pause_sprites, (367, 210))
+    quit_btn = Button('pause_quit', pause_sprites, (367, 310))
     while pause_running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -300,6 +309,8 @@ def pause():
             return
         if settings_btn.clicked:
             settings()
+            screen.fill(BLUE)
+            screen.blit(pygame.transform.scale(load_image('фон3.png'), (WIDTH, HEIGHT)), (0, 0))
         if menu_btn.clicked:
             current_window = 'main_menu'
             return True
@@ -382,6 +393,9 @@ class Button(pygame.sprite.Sprite):
             self.clicked_time += 1
         if self.clicked_time > 20:
             self.clicked = True
+            self.clicked_time = 0
+        elif self.clicked_time == 0:
+            self.clicked = False
         if self.rect.collidepoint(pygame.mouse.get_pos()):
             if any(pygame.mouse.get_pressed()):
                 self.clicked_time = 1
