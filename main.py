@@ -35,6 +35,35 @@ player_sprites = pygame.sprite.Group()
 wall_sprites = pygame.sprite.Group()
 
 
+def create_blood(pos, rect):  # функция создания крови
+    for i in range(20):  # создать обьекты крови
+        Blood(pos, random.choice(range(-5, 6)), random.choice(range(-5, 6)), rect)
+
+
+def load_image(*name, colorkey=None):  # Функция загрузки изображения из файла
+    for i in name:  # чтение аргументов
+        if type(i) != str:  # если один из аргументов является colorkey-ем то удалить его из списка и
+            # присвоить его значение
+            name = list(name)
+            colorkey = name.pop(name.index(i))
+    fullname = os.path.join('data', 'images', *name)  # добавить аргументы в путь к файлу
+    if not os.path.isfile(fullname):  # если такого файла не существует, закрыть программу
+        print("Изображение не найдено")
+        sys.exit()
+    image = pygame.image.load(fullname)  # загрузить изображение
+    if colorkey is not None or 'bullet-1.png' in name or 'player-image-1.png' in name:  # если цветовой ключ не пустой
+        # или искомое изображение - изображение пули или игрока, то сделать прозрачным заданный цвет изображения
+        image = image.convert()
+        if colorkey == -1:
+            colorkey = image.get_at((0, 0))
+        if 'bullet-1.png' in name or 'player-image-1.png' in name:
+            colorkey = pygame.color.Color('white')
+        image.set_colorkey(colorkey)
+    else:  # иначе конвертировать прозрачность
+        image = image.convert_alpha()
+    return image
+
+
 def find_moving_k(points):  # Функция, находящая направления движения по заданным точкам
     a = {0: [], 1: [], 2: [], 3: []}  # Пустой словарь
     for i, j in enumerate(points):
@@ -141,7 +170,7 @@ def game(image, pos, level, enemy_pos):  # Игра
             if event.type == pygame.KEYDOWN:  # При нажатии клавиатуры
                 player.key_press_event(event)  # Передать событие в спрайт игрока
                 if event.key == pygame.K_ESCAPE:  # Открыть паузу
-                    if pause():
+                    if pause():  # Если в меню паузы игрок вышел в главное меню, завершить игру
                         return
             if event.type == pygame.KEYUP:  # При отпускании клавиатуры
                 player.key_press_event(event)  # Передать событие в спрайт игрока
@@ -239,10 +268,6 @@ def main_menu():  # Главное меню
         for event in pygame.event.get():
             if event.type == pygame.QUIT:  # Выйти из программы
                 sys.exit()
-            if event.type == pygame.MOUSEMOTION:
-                pass
-            if event.type == pygame.MOUSEBUTTONDOWN:
-                pass
         main_menu_sprites.update()  # обновление спрайтов
         if start_btn.clicked:  # При нажатии кнопки СТАРТ открыть вкладку уровней
             current_window = 'levels'
@@ -298,7 +323,7 @@ def pause():  # пауза
                 sys.exit()
             if event.type == pygame.KEYDOWN:  # При нажатии клавиатуры
                 if event.key == pygame.K_ESCAPE:  # При нажатии кнопки ESC закрыть вкладку
-                    pause_running = False
+                    return
         pause_sprites.update()  # обновить спрайты
         pause_sprites.draw(screen)  # нарисовать спрайты
         pygame.display.flip()  # обновить окно
@@ -306,6 +331,7 @@ def pause():  # пауза
             return
         if settings_btn.clicked:  # при нажатии кнопки НАСТРОЙКИ, открыть вкладку настроек
             settings()
+            settings_btn.clicked = False  # Снять флажок
             screen.fill(BLUE)  # залить все элементы предыдущей вкладки
             screen.blit(pygame.transform.scale(load_image('фон3.png'), (WIDTH, HEIGHT)), (0, 0))
             # загрузить изображение
@@ -314,35 +340,6 @@ def pause():  # пауза
             return True  # возвращает Тrue
         if quit_btn.clicked:  # Выйти из программы
             sys.exit()
-
-
-def load_image(*name, colorkey=None):  # Функция загрузки изображения из файла
-    for i in name:  # чтение аргументов
-        if type(i) != str:  # если один из аргументов является colorkey-ем то удалить его из списка и
-            # присвоить его значение
-            name = list(name)
-            colorkey = name.pop(name.index(i))
-    fullname = os.path.join('data', 'images', *name)  # добавить аргументы в путь к файлу
-    if not os.path.isfile(fullname):  # если такого файла не существует, закрыть программу
-        print("Изображение не найдено")
-        sys.exit()
-    image = pygame.image.load(fullname)  # загрузить изображение
-    if colorkey is not None or 'bullet-1.png' in name or 'player-image-1.png' in name:  # если цветовой ключ не пустой
-        # или искомое изображение - изображение пули или игрока, то сделать прозрачным заданный цвет изображения
-        image = image.convert()
-        if colorkey == -1:
-            colorkey = image.get_at((0, 0))
-        if 'bullet-1.png' in name or 'player-image-1.png' in name:
-            colorkey = pygame.color.Color('white')
-        image.set_colorkey(colorkey)
-    else:  # иначе конвертировать прозрачность
-        image = image.convert_alpha()
-    return image
-
-
-def create_blood(pos, rect):  # функция создания крови
-    for i in range(20):  # создать обьекты крови
-        Blood(pos, random.choice(range(-5, 6)), random.choice(range(-5, 6)), rect)
 
 
 class Walls(pygame.sprite.Sprite):  # класс стены
@@ -396,8 +393,6 @@ class Button(pygame.sprite.Sprite):  # класс кнопок
             self.clicked_time += 1
         if self.clicked_time > 20:  # если прошло определенное количество времени, установить флажок, обнулить отсчет
             self.clicked = True
-        elif self.clicked_time > 30:  # если отсчет обнулен, снять флажок
-            self.clicked = False
             self.clicked_time = 0
         if self.rect.collidepoint(pygame.mouse.get_pos()):  # если положение мыши находится на этой кнопке
             if any(pygame.mouse.get_pressed()):  # если мышь нажата, начать отсчет
@@ -408,7 +403,7 @@ class Button(pygame.sprite.Sprite):  # класс кнопок
             self.image = self.image_list[0]
 
 
-class Blood(pygame.sprite.Sprite):
+class Blood(pygame.sprite.Sprite):  # класс крови
     # загрузка изображений
     images = [pygame.transform.scale(load_image('blood-1.png'), (i, i)) for i in (1, 2, 3)]
 
@@ -639,9 +634,9 @@ class Enemy(pygame.sprite.Sprite):  # класс врага
 if __name__ == '__main__':
     clear_sprites()  # очистить все спрайты
     running = True
-    current_window = 'main_menu'  # нынешняя вкладка
+    current_window = 'main_menu'  # текущая вкладка
     while running:
-        if current_window == 'main_menu':  # если нынешняя вкладка - главное меню, открыть главное меню
+        if current_window == 'main_menu':  # если текущая вкладка - главное меню, открыть главное меню
             main_menu()
-        if current_window == 'levels':  # иначе если нынешняя вкладка - уровни, открыть уровни
+        if current_window == 'levels':  # иначе если текущая вкладка - уровни, открыть уровни
             levels()
