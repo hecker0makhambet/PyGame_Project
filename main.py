@@ -2,8 +2,6 @@ import pygame
 import os
 import sys
 import random
-# Нужно сделать презентацию
-# Нужно написать документацию
 WIDTH = 600  # Ширина окна
 HEIGHT = 500  # Высота окна
 FPS = 30  # Количество кадров в секунду
